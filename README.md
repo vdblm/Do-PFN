@@ -1,6 +1,6 @@
-# Do-PFN 
+# Do-PFN  🔨🔍🚀
 
-Attached is the code supporting the NeurIPS submission "Do-PFN: In-Context Learning for Causal Effect Estimation"
+Attached is the code supporting "Do-PFN: In-Context Learning for Causal Effect Estimation". Do-PFN is a pre-trained transformer for causal inference, trained to predict conditional interventional distributions from observational data alone.
 
 ### Installation
 
@@ -11,7 +11,6 @@ Create a conda environment with python version 3.10, activate it, and install th
    conda activate dopfn_env
    pip install -r requirements.txt
 ```
-
 
 ### Running Do-PFN
 
