@@ -1,4 +1,4 @@
-# Do-PFN  🔨🔍
+# Do-PFN 🔨🔍
 
 Attached is the code supporting "Do-PFN: In-Context Learning for Causal Effect Estimation". Do-PFN is a pre-trained transformer for causal inference, trained to predict conditional interventional distributions (CIDs) and conditional average treatment effects (CATEs) from observational data alone.
 
@@ -46,3 +46,34 @@ We evaluate the performance of Do-PFN on six case studies across more than 1,000
 Do-PFN is a radical new approach to causal inference, replacing standard assumptions of a ground-truth causal model (Pearl) or assumptions about its structure (Rubin) with a “prior” over SCMs. In other words, our modeling assumptions lie in our simple, yet general and extensible synthetic data-generating process. 
 In practice, we relax the assumption of a specific causal graph or structure, to the weaker: “there exists a causal structure behind the data that is represented in our prior over SCMs”
 #In practice, we relax the assumption of a specific causal graph or structure, to the much weaker: “there exists a causal explanation for the data”
+
+### Predicting CIDs
+
+```python
+dataset = load_dataset(ds_name='sales')
+dopfn = DoPFNRegressor()
+
+train_ds, test_ds = dataset.generate_valid_split(n_splits=2)
+
+dopfn.fit(train_ds.x, train_ds.y)
+y_pred = dopfn.predict_full(test_ds.x)
+```
+### Estimating CATEs
+
+```python
+from copy import deepcopy
+
+dopfn.fit(train_ds.x, train_ds.y)
+
+x_1, x_0 = deepcopy(test_ds.x), deepcopy(test_ds.x)
+x_1[, 0], x_0[, 0] = 1, 0
+
+y_pred_1 = dopfn.predict_full(x_1)
+y_pred_0 = dopfn.predict_full(x_0)
+
+cate_pred = y_pred_1 - y_pred_0
+```
+
+For questions, comments, and discussion, please contact corresponding authors:
+- Jake Robertson: robertsj@cs.uni-freiburg.de
+- Arik Reuter: arik_reuter@gmx.de
