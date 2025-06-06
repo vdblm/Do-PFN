@@ -76,4 +76,4 @@ cate_pred = y_pred_1 - y_pred_0
 
 For questions, comments, and discussion, please contact corresponding authors:
 - Jake Robertson: robertsj@cs.uni-freiburg.de
-- Arik Reuter: arik_reuter@gmx.de
+- Arik Reuter: 
