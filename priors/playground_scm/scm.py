@@ -9,6 +9,7 @@ import random
 import dill
 import torch
 import numpy as np
+from priors.playground_scm.utils_playground_scm import torch_random_choice
 
 class StructuralCausalModel:
     """
@@ -98,10 +99,25 @@ class StructuralCausalModel:
     def set_binarization_params(self, treatment):
         self.t_threshs, self.t1s, self.t2s = [], [], []
         for b in range(treatment.shape[0]):
+
+            treatment[b] = torch.nan_to_num(treatment[b])
             not_min_max = (treatment[b] > treatment[b].min()) & (treatment[b] < treatment[b].max())
-            t_thresh = np.random.choice(treatment[b][not_min_max])  # the threshold cannot be the min or max value of the treatment
-            t1 = np.random.choice(treatment[b][treatment[b] < t_thresh]) if self.zero_one_treatment == False else 0
-            t2 = np.random.choice(treatment[b][treatment[b] > t_thresh]) if self.zero_one_treatment == False else 1
+
+            if (not_min_max == False).all():
+                self.t_threshs.append(treatment[b][0]), self.t1s.append(treatment[b][0]), self.t2s.append(treatment[b][0])
+                continue
+
+            treatment[b] *= self.t_scaling_factor if hasattr(self, 't_scaling_factor') else 1
+            
+            if self.binary_strategy == 'extreme':
+                t_thresh = np.random.choice(treatment[b][not_min_max])  # the threshold cannot be the min or max value of the treatment
+                t1 = torch_random_choice(treatment[b][treatment[b] < t_thresh])
+                t2 = torch_random_choice(treatment[b][treatment[b] > t_thresh])
+
+            elif self.binary_strategy == 'mean':
+                t_thresh = (treatment[b][not_min_max]).mean()
+                t1 = (treatment[b][treatment[b] < t_thresh]).mean()
+                t2 = (treatment[b][treatment[b] > t_thresh]).mean()
 
             assert t1 != t2, f'Treatment values are equal! Got {t1} and {t2}. Variance in treatment is {torch.var(treatment[b])}'
 
@@ -117,6 +133,15 @@ class StructuralCausalModel:
             treatment[b][~lt_map] = self.t2s[b]
 
         return treatment
+    
+
+    def get_zero_one_treatment(self, treatment):
+
+        for b in range(treatment.shape[1]):
+            treatment[:, b] = (treatment[:, b] < treatment[:, b].mean()).float()
+
+        return treatment
+
 
     def get_next_sample(self, seed=0, exogenous_vars=None, binarize=False, graph = None) -> Tuple[Dict, Dict]:
         """

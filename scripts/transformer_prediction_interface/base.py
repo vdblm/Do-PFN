@@ -556,6 +556,8 @@ class TabPFNBaseModel(BaseEstimator):
         assert self.normalize_with_test is False, "Not implemented yet"
         import warnings
 
+        return eval_xs, []
+
         if self.feature_shift_decoder != "none":
             assert [
                 "onehot" not in preprocess_transform.categorical_name
@@ -764,8 +766,6 @@ class TabPFNBaseModel(BaseEstimator):
             max_step == 0
         ):  # this means that we use a per feature arch, which does not care about shuffling
             shuffle_method = "none"
-
-        shuffle_method = "none" # FIXME 
 
         # print('shuffle method', shuffle_method)
 
@@ -1879,7 +1879,7 @@ class TabPFNRegressor(RegressorMixin, TabPFNBaseModel):
 
     def predict(self, X):
         prediction = self.predict_full(X)
-        return prediction[self.get_optimization_mode()]
+        return prediction['mean']
 
     def predict_full(self, X, additional_y=None):
         X_full, y_full, additional_y, eval_position = super().predict_common_setup(
@@ -1958,3 +1958,15 @@ class DoPFNRegressor(TabPFNRegressor):
 
         super().__init__(**config.to_kwargs())
 
+    def predict_cid(self, X, t):
+        X[:, 0] = t
+        y_t = self.predict(X)
+
+        return y_t
+
+    def predict_cate(self, X):
+        
+        y_1 = self.predict_cid(X, 1)
+        y_0 = self.predict_cid(X, 0)
+
+        return y_1 - y_0

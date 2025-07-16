@@ -13,7 +13,6 @@ import pandas as pd
 import warnings
 
 from .classification import *
-from.fairness import *
 
 
 class MetricDefinition(TypedDict):
