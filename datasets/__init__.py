@@ -143,6 +143,7 @@ class TabularDataset:
             ds.x_int = ds.x_int[indices]
             ds.y_obs = ds.y_obs[indices]
             ds.y_int = ds.y_int[indices]
+            ds.cate = ds.cate[indices]
 
         return ds
 
@@ -221,7 +222,6 @@ class TabularDataset:
             if self.task_type == "do_regression":
                 train_ds.x = train_ds.x_obs
                 train_ds.y = train_ds.y_obs
-        
                 test_ds.y = test_ds.y_int
                 test_ds.x = deepcopy(test_ds.x_obs)
                 test_ds.x[:, 0] = test_ds.x_int[:, 0] # simulate intervention
@@ -321,17 +321,41 @@ class InterventionalDataset(TabularDataset):
         return train_ds, test_ds
 
 def load_semi_real_interventional_datasets():
-    semi_real_datasets = ['sales', 'sales_cate']
+    semi_real_datasets = ['sales', 'law_race']
 
     datasets_to_return = []
-    for dataset in semi_real_datasets:
-        data_path = Path('data/semi_real') / dataset
+    for i in tqdm.tqdm(range(len(semi_real_datasets)), desc=f'Semi-Real Benchmarks'):
+        dataset = semi_real_datasets[i]
+        data_path = Path('data/semi_real_new') / dataset
 
         with open(str(data_path) + f'/{dataset}.pkl', 'rb') as f:
             ds = pkl.load(f)
             datasets_to_return.append(ds)
         
     return datasets_to_return
+
+import tqdm
+
+def load_prior_sampling_casestudies(n_max: int = 10):
+    synthetic_casestudies = ['Observed_Confounder', 
+                             'Backdoor_Criterion',  
+                             'Frontdoor_Criterion',
+                             'Observed_Mediator',
+                             'Observed_Mediator_and_Confounder',
+                             'Unobserved_Confounder',
+                             'Common_Effect',
+                             'Observed_Confounder_Small']
+                
+    casestudy_benchmarks = []
+
+    for casestudy in synthetic_casestudies:
+        data_path = Path('/work/dlclarge1/robertsj-dopfn/Do-PFN/data/prior_new') / casestudy
+        for i in tqdm.tqdm(range(1, n_max+1), desc=f'{casestudy} Benchmarks'):
+            with open(str(data_path) + f'/{casestudy}_{i}.pkl', 'rb') as f:
+                casestudy_benchmarks.append(pkl.load(f))
+
+    return casestudy_benchmarks
+
 
 def load_dataset(ds_name):
     task_type = "do_regression"
@@ -373,7 +397,10 @@ def get_benchmark_for_task(
 ) -> tuple[list[pd.DataFrame], pd.DataFrame | None]:
         
     if task_type == "do_regression":
-        return load_semi_real_interventional_datasets(), None
+        datasets = load_semi_real_interventional_datasets()
+        datasets +=  load_prior_sampling_casestudies()
+        return datasets, None
+
     else:
         raise NotImplementedError(f"Unknown task type {task_type}")
 
