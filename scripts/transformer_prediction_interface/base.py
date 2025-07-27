@@ -201,7 +201,7 @@ class TabPFNBaseModel(BaseEstimator):
             raise ValueError("Model needs to be initialized first")
         else:
             for encoder in self.model_processed_.encoder: # TODO check if name is correct
-                
+
                 if isinstance(encoder, ColumnMarkerEncoderStep):
                     encoder.num_special_cols = 1
 
@@ -656,8 +656,8 @@ class TabPFNBaseModel(BaseEstimator):
 
                 if pt.__class__.__name__ == "NOP":
                     continue
-                
-                # apply 
+
+                # apply
                 try:
                     pt.fit(eval_xs[:eval_position, col : col + 1])
                     trans = pt.transform(eval_xs[:, col : col + 1])
@@ -694,7 +694,7 @@ class TabPFNBaseModel(BaseEstimator):
             )
             ct.fit(eval_xs[:eval_position, :])
             eval_xs = ct.transform(eval_xs)
-        
+
         elif preprocess_transform.categorical_name == "onehot":
             # Create a column transformer
             ct = ColumnTransformer(
@@ -802,7 +802,7 @@ class TabPFNBaseModel(BaseEstimator):
             unique_shufflings = list(unique_shufflings)
             # Convert to PyTorch tensor
             feature_shift_configurations = torch.tensor(unique_shufflings)
-            
+
         elif shuffle_method == "local_shuffle":
             unique_shufflings = set()
             features_indices = list(range(feature_n))
@@ -1810,7 +1810,7 @@ class TabPFNRegressor(RegressorMixin, TabPFNBaseModel):
     def __init__(
         self,
         model: Optional[Any] = None,
-        device: str = "cpu",
+        device: str = "cuda:0",
         model_string: str = "",
         batch_size_inference: int = None,
         fp16_inference: bool = False,
@@ -1828,7 +1828,7 @@ class TabPFNRegressor(RegressorMixin, TabPFNBaseModel):
         optimize_metric: Optional[str] = None,
         seed: Optional[int] = 0,
         transformer_predict_kwargs: Optional[Dict] = None,
-        show_progress: bool = True,
+        show_progress: bool = False,
         sklearn_compatible_precision: bool = False,
         save_peak_memory: Literal["True", "False", "auto"] = "True",
         softmax_temperature: Optional[float] = 0.0,
@@ -1965,7 +1965,7 @@ class DoPFNRegressor(TabPFNRegressor):
         return y_t
 
     def predict_cate(self, X):
-        
+
         y_1 = self.predict_cid(X, 1)
         y_0 = self.predict_cid(X, 0)
 

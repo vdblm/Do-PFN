@@ -6,14 +6,16 @@ import pandas as pd
 import torch
 import numpy as np
 import warnings
-from typing import Optional,  Literal
+from typing import Optional, Literal
 
 import warnings
+
 warnings.filterwarnings("ignore")
 
 from pathlib import Path
 import pickle as pkl
 from copy import deepcopy
+
 
 class DatasetModifications:
     def __init__(self, classes_capped: bool, feats_capped: bool, samples_capped: bool):
@@ -38,7 +40,7 @@ class TabularDataset:
         categorical_feats: Optional[list[int]] = None,
         modifications: Optional[DatasetModifications] = None,
         splits: Optional[list[tuple[torch.tensor, torch.tensor]]] = None,
-        benchmark_name: Optional[str] = None, #TODO -Jake
+        benchmark_name: Optional[str] = None,  # TODO -Jake
         extra_info: Optional[dict] = None,
         description: Optional[str] = None,
     ):
@@ -62,9 +64,7 @@ class TabularDataset:
         self.modifications = (
             modifications
             if modifications is not None
-            else DatasetModifications(
-                classes_capped=False, feats_capped=False, samples_capped=False
-            )
+            else DatasetModifications(classes_capped=False, feats_capped=False, samples_capped=False)
         )
         self.splits = splits
         self.task_type = task_type
@@ -81,16 +81,8 @@ class TabularDataset:
         if self.task_type in ("fairness_multiclass", "fairness_regression", "do_regression"):
             return self.name
         else:
-            tid = (
-                    self.extra_info["openml_tid"]
-                    if "openml_tid" in self.extra_info
-                    else "notask"
-                )
-            did = (
-                self.extra_info["openml_did"]
-                if "openml_did" in self.extra_info
-                else self.extra_info["did"]
-            )
+            tid = self.extra_info["openml_tid"] if "openml_tid" in self.extra_info else "notask"
+            did = self.extra_info["openml_did"] if "openml_did" in self.extra_info else self.extra_info["did"]
             return f"{did}_{tid}"
 
     def to_pandas(self) -> pd.DataFrame:
@@ -116,11 +108,7 @@ class TabularDataset:
             max_percentage_of_all_values=0.1,
         )
 
-        categorical_idxs = [
-            i
-            for i, dtype in enumerate(encoded_with_categoricals.dtypes)
-            if dtype == "category"
-        ]
+        categorical_idxs = [i for i, dtype in enumerate(encoded_with_categoricals.dtypes) if dtype == "category"]
         self.categorical_feats = categorical_idxs
 
     def __getitem__(self, indices):
@@ -134,9 +122,9 @@ class TabularDataset:
         if self.task_type == "fairness_multiclass":
             ds.prot_attrs = ds.prot_attrs[indices]
             if ds.dowhy_data is not None:
-                ds.dowhy_data['df'] = ds.dowhy_data['df'].iloc[indices]
-            if 'counterfactual' in ds.name:
-                ds.dowhy_data['df_cntf'] = ds.dowhy_data['df_cntf'].iloc[indices]
+                ds.dowhy_data["df"] = ds.dowhy_data["df"].iloc[indices]
+            if "counterfactual" in ds.name:
+                ds.dowhy_data["df_cntf"] = ds.dowhy_data["df_cntf"].iloc[indices]
 
         elif self.task_type == "do_regression":
             ds.x_obs = ds.x_obs[indices]
@@ -153,13 +141,9 @@ class TabularDataset:
             return True
 
         # Checks if the set of classes are the same in dataset and its subsets
-        if set(torch.unique(ds.y[index_train]).tolist()) != set(
-            torch.unique(ds.y).tolist()
-        ):
+        if set(torch.unique(ds.y[index_train]).tolist()) != set(torch.unique(ds.y).tolist()):
             return False
-        if set(torch.unique(ds.y[index_test]).tolist()) != set(
-            torch.unique(ds.y).tolist()
-        ):
+        if set(torch.unique(ds.y[index_test]).tolist()) != set(torch.unique(ds.y).tolist()):
             return False
 
         return True
@@ -183,7 +167,7 @@ class TabularDataset:
         :auto_fix_stratified_splits: If True, we try to fix the splits if they are not valid. Only used if splits is None.
 
         :return: the train and test split in format of TabularDataset or None, None if no valid split could be generated.
-        """     
+        """
 
         if split_number == 0:
             raise ValueError("Split number 0 is not used, we index starting from 1.")
@@ -217,14 +201,14 @@ class TabularDataset:
             split_number_parsed = split_number % n_splits
             train_inds, test_inds = splits[split_number_parsed]
             train_ds = self[train_inds]
-            test_ds = self[test_inds]   
+            test_ds = self[test_inds]
 
             if self.task_type == "do_regression":
                 train_ds.x = train_ds.x_obs
                 train_ds.y = train_ds.y_obs
                 test_ds.y = test_ds.y_int
                 test_ds.x = deepcopy(test_ds.x_obs)
-                test_ds.x[:, 0] = test_ds.x_int[:, 0] # simulate intervention
+                test_ds.x[:, 0] = test_ds.x_int[:, 0]  # simulate intervention
         else:
             train_inds, test_inds = splits[split_number]
             train_ds = self[train_inds]
@@ -235,7 +219,7 @@ class TabularDataset:
                 train_ds.y = train_ds.y_obs
                 test_ds.y = test_ds.y_int
                 test_ds.x = deepcopy(test_ds.x_obs)
-                test_ds.x[:, 0] = test_ds.x_int[:, 0] # simulate intervention
+                test_ds.x[:, 0] = test_ds.x_int[:, 0]  # simulate intervention
 
         return train_ds, test_ds
 
@@ -264,23 +248,23 @@ class TabularDataset:
         cov_mat = torch.logical_or(cov_mat == 1.0, cov_mat > var_thresh).float()
         duplicated_samples = cov_mat.sum(axis=0)
 
-        return (duplicated_samples, cov_mat), (
-            duplicated_samples > 0
-        ).float().mean().item()
+        return (duplicated_samples, cov_mat), (duplicated_samples > 0).float().mean().item()
+
 
 class InterventionalDataset(TabularDataset):
-    def __init__(self, 
-                 x_obs: torch.Tensor,
-                 y_obs: torch.Tensor,
-                 x_int: torch.Tensor,
-                 y_int: torch.Tensor,
-                 do_scm: any,
-                 attribute_names: List[str],
-                 name: str = "", 
-                 function_args: dict = None,
-                 num_treatments: int = 1,
-                 **kwargs):
-        
+    def __init__(
+        self,
+        x_obs: torch.Tensor,
+        y_obs: torch.Tensor,
+        x_int: torch.Tensor,
+        y_int: torch.Tensor,
+        do_scm: any,
+        attribute_names: List[str],
+        name: str = "",
+        function_args: dict = None,
+        num_treatments: int = 1,
+        **kwargs,
+    ):
         """
         Interventional dataset for causal inference tasks.
         :param x_obs: Observed features, shape (N_samples, N_features)
@@ -294,11 +278,11 @@ class InterventionalDataset(TabularDataset):
         :param kwargs: Additional keyword arguments
         """
 
-        # some assertions 
+        # some assertions
         assert x_obs.shape[0] == y_obs.shape[0], "x_obs and y_obs must have the same number of samples"
         assert x_int.shape[0] == y_int.shape[0], "x_int and y_int must have the same number of samples"
         assert x_obs.shape[1] == x_int.shape[1], "x_obs and x_int must have the same number of features"
-        
+
         self.x_obs = x_obs.float()
         self.x_int = x_int.float()
         self.attribute_names = attribute_names
@@ -306,13 +290,14 @@ class InterventionalDataset(TabularDataset):
         self.y_int = y_int.float()
         self.do_scm = do_scm
         self.function_args = function_args
-        
+
         super().__init__(
-            task_type="do_regression", 
-            x=torch.tensor(x_obs).float(), 
-            y=torch.tensor(y_obs).float(), 
-            attribute_names=attribute_names, 
-            name=name)
+            task_type="do_regression",
+            x=torch.tensor(x_obs).float(),
+            y=torch.tensor(y_obs).float(),
+            attribute_names=attribute_names,
+            name=name,
+        )
 
     def get_splits(self):
         idcs = np.random.permutation(np.arange(len(self.y)))
@@ -320,38 +305,43 @@ class InterventionalDataset(TabularDataset):
         train_ds, test_ds = self.generate_valid_split(splits=[train_idcs, test_idcs])
         return train_ds, test_ds
 
+
 def load_semi_real_interventional_datasets():
-    semi_real_datasets = ['sales', 'law_race']
+    semi_real_datasets = ["sales", "law_race"]
 
     datasets_to_return = []
-    for i in tqdm.tqdm(range(len(semi_real_datasets)), desc=f'Semi-Real Benchmarks'):
+    for i in tqdm.tqdm(range(len(semi_real_datasets)), desc=f"Semi-Real Benchmarks"):
         dataset = semi_real_datasets[i]
-        data_path = Path('data/semi_real_new') / dataset
+        data_path = Path("data/semi_real") / dataset
 
-        with open(str(data_path) + f'/{dataset}.pkl', 'rb') as f:
+        with open(str(data_path) + f"/{dataset}.pkl", "rb") as f:
             ds = pkl.load(f)
             datasets_to_return.append(ds)
-        
+
     return datasets_to_return
+
 
 import tqdm
 
+
 def load_prior_sampling_casestudies(n_max: int = 10):
-    synthetic_casestudies = ['Observed_Confounder', 
-                             'Backdoor_Criterion',  
-                             'Frontdoor_Criterion',
-                             'Observed_Mediator',
-                             'Observed_Mediator_and_Confounder',
-                             'Unobserved_Confounder',
-                             'Common_Effect',
-                             'Observed_Confounder_Small']
-                
+    synthetic_casestudies = [
+        "Observed_Confounder",
+        "Backdoor_Criterion",
+        "Frontdoor_Criterion",
+        "Observed_Mediator",
+        "Observed_Mediator_and_Confounder",
+        "Unobserved_Confounder",
+        "Common_Effect",
+        "Observed_Confounder_Small",
+    ]
+
     casestudy_benchmarks = []
 
     for casestudy in synthetic_casestudies:
-        data_path = Path('/work/dlclarge1/robertsj-dopfn/Do-PFN/data/prior_new') / casestudy
-        for i in tqdm.tqdm(range(1, n_max+1), desc=f'{casestudy} Benchmarks'):
-            with open(str(data_path) + f'/{casestudy}_{i}.pkl', 'rb') as f:
+        data_path = Path("/work/dlclarge1/robertsj-dopfn/Do-PFN/data/prior_new") / casestudy
+        for i in tqdm.tqdm(range(1, n_max + 1), desc=f"{casestudy} Benchmarks"):
+            with open(str(data_path) + f"/{casestudy}_{i}.pkl", "rb") as f:
                 casestudy_benchmarks.append(pkl.load(f))
 
     return casestudy_benchmarks
@@ -364,11 +354,7 @@ def load_dataset(ds_name):
         datasets_dict = {}
 
     datasets_dict[f"valid_{task_type}"], df = get_benchmark_for_task(
-        task_type,
-        split="valid",
-        max_samples=2000,
-        return_as_lists=False,
-        sel=False
+        task_type, split="valid", max_samples=2000, return_as_lists=False, sel=False
     )
 
     dataset_map = {}
@@ -378,6 +364,7 @@ def load_dataset(ds_name):
     dataset = dataset_map[ds_name]
 
     return dataset
+
 
 def get_benchmark_for_task(
     task_type: Literal["do_regression"],
@@ -395,12 +382,11 @@ def get_benchmark_for_task(
     fairness_enabled: bool = False,
     sel=True,
 ) -> tuple[list[pd.DataFrame], pd.DataFrame | None]:
-        
+
     if task_type == "do_regression":
         datasets = load_semi_real_interventional_datasets()
-        datasets +=  load_prior_sampling_casestudies()
+        # datasets += load_prior_sampling_casestudies()
         return datasets, None
 
     else:
         raise NotImplementedError(f"Unknown task type {task_type}")
-
